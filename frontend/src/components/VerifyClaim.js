@@ -1,135 +1,164 @@
 import React, { useState } from "react";
+import { verifyMessage, keccak256, toUtf8Bytes, getBytes } from "ethers";
 
+function IdentityForm() {
+  const [verification, setVerification] = useState({
+    message: "",
+    signature: "",
+    expectedAddress: "",
+    verifiedAddress: "",
+    isValid: null,
+  });
 
-const VerifyClaim = () => {
-  const [fileData, setFileData] = useState(null);
-  const [address, setAddress] = useState("");
-  const [signature, setSignature] = useState("");
-  const [message, setMessage] = useState("");
-  const [verificationResult, setVerificationResult] = useState(null); // { valid: bool, address: string }
-
-  const handleFileChange = (e) => {
+  // Import JSON file for identity verification
+  const handleImport = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const content = JSON.parse(event.target.result);
-        setFileData(content);
-        setAddress(content.address || "");
-        setSignature(content.signature || "");
-        setMessage(content.message || "");
-        setVerificationResult(null); // reset on new file
-      } catch {
-        alert("Fichier invalide ou mal formaté");
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const verifySignature = async () => {
-    if (!address || !signature || !message) {
-      alert("Tous les champs doivent être remplis");
-      return;
-    }
 
     try {
-      if (!window.ethereum) {
-        alert("MetaMask est requis pour vérifier la signature");
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      setVerification({
+        message: json.message,
+        signature: json.signature,
+        expectedAddress: json.address,
+        verifiedAddress: "",
+        isValid: null,
+      });
+    } catch (err) {
+      alert("❌ Erreur de lecture du fichier.");
+      console.error(err);
+    }
+  };
+
+  // Verify the imported identity signature
+  const handleVerify = async () => {
+    try {
+      const { message, signature, expectedAddress } = verification;
+      if (!message || !signature || !expectedAddress) {
+        alert("❗ Veuillez remplir tous les champs.");
         return;
       }
-      await window.ethereum.request({ method: "eth_requestAccounts" });
 
-      const ethers = require("ethers");
-      const recoveredAddress = ethers.utils.verifyMessage(message, signature);
+      // recover address from signature
+      const hash = keccak256(toUtf8Bytes(message));
+      const recovered = await verifyMessage(getBytes(hash), signature);
 
-      const valid = recoveredAddress.toLowerCase() === address.toLowerCase();
+      const isValid = recovered.toLowerCase() === expectedAddress.toLowerCase();
 
-      setVerificationResult({ valid, address: recoveredAddress });
-    } catch (error) {
-      alert("Erreur lors de la vérification : " + error.message);
+      setVerification({
+        ...verification,
+        messageHash: hash,
+        verifiedAddress: recovered,
+        isValid,
+      });
+    } catch (err) {
+      console.error("Erreur vérification :", err);
+      alert("⚠️ Erreur pendant la vérification.");
     }
   };
 
   return (
-    <div style={{ maxWidth: 700, margin: "40px auto", fontFamily: "Arial, sans-serif" }}>
-      <h1 style={{ fontSize: "2.2rem", marginBottom: "20px" }}>Vérifier une identité signée</h1>
+    <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
+      <h2 style={{ marginBottom: "20px" }}>Vérifier une identité signée</h2>
 
       <input
         type="file"
-        accept=".json"
-        onChange={handleFileChange}
+        accept="application/json"
+        onChange={handleImport}
+        style={{ marginBottom: "15px" }}
+      />
+
+      <input
+        placeholder="Adresse Ethereum attendue"
+        value={verification.expectedAddress}
+        onChange={(e) =>
+          setVerification({ ...verification, expectedAddress: e.target.value })
+        }
         style={{
-          padding: "10px 20px",
-          cursor: "pointer",
-          borderRadius: "5px",
-          border: "1px solid #ccc",
+          width: "100%",
+          padding: "10px",
           marginBottom: "15px",
-          display: "block",
+          borderRadius: "5px",
+          border: "1.5px solid #ccc",
+          fontSize: "16px",
         }}
       />
 
-      <label style={{ display: "block", marginTop: "10px", fontWeight: "bold" }}>Adresse Ethereum attendue:</label>
-      <input
-        type="text"
-        value={address}
-        readOnly
-        style={{ width: "100%", padding: "8px", marginBottom: "15px", borderRadius: "5px", border: "1px solid #ccc" }}
-      />
-
-      <label style={{ display: "block", marginTop: "10px", fontWeight: "bold" }}>Signature:</label>
       <textarea
-        value={signature}
-        readOnly
         rows={3}
-        style={{ width: "100%", padding: "8px", marginBottom: "15px", borderRadius: "5px", border: "1px solid #ccc", fontFamily: "monospace" }}
+        placeholder="Signature"
+        value={verification.signature}
+        onChange={(e) =>
+          setVerification({ ...verification, signature: e.target.value })
+        }
+        style={{
+          width: "100%",
+          padding: "10px",
+          marginBottom: "15px",
+          borderRadius: "5px",
+          border: "1.5px solid #ccc",
+          fontSize: "16px",
+          resize: "vertical",
+        }}
       />
 
-      <label style={{ display: "block", marginTop: "10px", fontWeight: "bold" }}>Message:</label>
       <textarea
-        value={message}
-        readOnly
-        rows={4}
-        style={{ width: "100%", padding: "8px", marginBottom: "15px", borderRadius: "5px", border: "1px solid #ccc" }}
+        rows={5}
+        placeholder="Message"
+        value={verification.message}
+        onChange={(e) =>
+          setVerification({ ...verification, message: e.target.value })
+        }
+        style={{
+          width: "100%",
+          padding: "10px",
+          marginBottom: "15px",
+          borderRadius: "5px",
+          border: "1.5px solid #ccc",
+          fontSize: "16px",
+          resize: "vertical",
+        }}
       />
 
       <button
-        onClick={verifySignature}
-        disabled={!address || !signature || !message}
+        onClick={handleVerify}
         style={{
-          backgroundColor: !address || !signature || !message ? "#ccc" : "#4a90e2",
-          color: "white",
-          padding: "12px 25px",
-          border: "none",
+          padding: "10px 20px",
+          fontSize: "16px",
+          cursor: "pointer",
           borderRadius: "5px",
-          cursor: !address || !signature || !message ? "not-allowed" : "pointer",
-          fontWeight: "bold",
-          fontSize: "1rem",
+          border: "none",
+          backgroundColor: "#007bff",
+          color: "white",
+          marginBottom: "20px",
         }}
       >
         Vérifier
       </button>
 
-      {verificationResult && (
+      {verification.isValid !== null && (
         <div
           style={{
-            marginTop: "25px",
             padding: "15px",
             borderRadius: "8px",
-            border: `2px solid ${verificationResult.valid ? "green" : "red"}`,
-            backgroundColor: verificationResult.valid ? "#e0f8e0" : "#f9d6d5",
-            fontSize: "1.1rem",
-            fontWeight: "bold",
+            border: `2px solid ${verification.isValid ? "green" : "red"}`,
+            backgroundColor: verification.isValid ? "#e6ffe6" : "#ffe6e6",
+            fontSize: "16px",
+            whiteSpace: "pre-wrap",
           }}
         >
-          <p>Adresse retrouvée: {verificationResult.address}</p>
-          <p style={{ color: verificationResult.valid ? "green" : "red" }}>
-            Signature {verificationResult.valid ? "valide" : "invalide"}
+          <p>Adresse retrouvée : {verification.verifiedAddress}</p>
+          <p style={{ color: verification.isValid ? "green" : "red" }}>
+            {verification.isValid
+              ? "Signature valide ✅"
+              : "Signature invalide ❌"}
           </p>
         </div>
       )}
     </div>
   );
-};
+}
 
-export default VerifyClaim;
+export default IdentityForm;

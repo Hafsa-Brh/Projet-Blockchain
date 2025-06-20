@@ -2,7 +2,15 @@ import React from 'react';
 
 function Navbar({ activePage, setActivePage }) {
   return (
-    <nav style={{ display: 'flex', gap: '20px', justifyContent: 'center', padding: '10px', background: '#eee' }}>
+    <nav
+      style={{
+        display: 'flex',
+        gap: '20px',
+        justifyContent: 'center',
+        padding: '10px',
+        background: '#eee',
+      }}
+    >
       <button
         style={{ fontWeight: activePage === 'identity' ? 'bold' : 'normal' }}
         onClick={() => setActivePage('identity')}
@@ -21,7 +29,14 @@ function Navbar({ activePage, setActivePage }) {
         style={{ fontWeight: activePage === 'verify' ? 'bold' : 'normal' }}
         onClick={() => setActivePage('verify')}
       >
-        Vérifier Attestation
+        Vérifier Identité
+      </button>
+
+      <button
+        style={{ fontWeight: activePage === 'verifyDocument' ? 'bold' : 'normal' }}
+        onClick={() => setActivePage('verifyDocument')}
+      >
+        Vérifier Document
       </button>
     </nav>
   );

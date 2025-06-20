@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import IdentityForm from './components/IdentityForm';
 import VerifyClaim from './components/VerifyClaim';
 import SignDocument from './components/SignDocument';
+import VerifyDocument from './components/VerifyDoc';
 
 function App() {
   // State to track which page/component to show
@@ -17,6 +18,8 @@ function App() {
         return <VerifyClaim />;
       case 'sign':
         return <SignDocument />;
+      case 'verifyDocument':
+        return <VerifyDocument />;
       default:
         return <IdentityForm />;
     }
